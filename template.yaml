@@ -7,7 +7,7 @@ Description: >
 
 Globals:
   Function:
-    Runtime: python3.12
+    Runtime: python3.9
     Timeout: 120
     MemorySize: 256
     Architectures:
@@ -111,7 +111,7 @@ Resources:
   ArticlesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub claude-tg-bot-articles-${Stage}
+      TableName: claude-tg-bot-articles
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: article_hash
@@ -126,7 +126,7 @@ Resources:
   DraftsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub claude-tg-bot-drafts-${Stage}
+      TableName: claude-tg-bot-drafts
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: draft_id
