@@ -59,13 +59,13 @@ Resources:
           ARTICLES_TABLE: claude-tg-bot-articles
           DRAFTS_TABLE: claude-tg-bot-drafts
           LOG_LEVEL: INFO
-      Events:
-        DailySchedule:
-          Type: Schedule
-          Properties:
-            Schedule: !Ref ScanSchedule
-            Description: Daily news scan trigger
-            Enabled: true
+      # Events:
+      #   DailySchedule:
+      #     Type: Schedule
+      #     Properties:
+      #       Schedule: !Ref ScanSchedule
+      #       Description: Daily news scan trigger
+      #       Enabled: true
       Policies:
         - DynamoDBCrudPolicy:
             TableName: claude-tg-bot-articles
