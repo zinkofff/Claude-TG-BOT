@@ -210,14 +210,84 @@ def handle_text_message(
 # ── Command Handlers ──────────────────────────────────────────────────
 
 
+def handle_draft_command(
+    bot: TelegramBot,
+    db: DynamoDBStorage,
+    claude: ClaudeClient,
+    chat_id: int,
+    args: str,
+) -> None:
+    """Handle /draft command — generate posts from a user-provided topic or URL."""
+    if not args.strip():
+        bot.send_message(
+            chat_id,
+            "💡 Usage: <code>/draft Your headline or topic here</code>\n"
+            "Or: <code>/draft https://example.com/article</code>",
+        )
+        return
+
+    user_input = args.strip()
+    extra_context = ""
+
+    # If the input looks like a URL, try to fetch the page title/content
+    if user_input.startswith("http://") or user_input.startswith("https://"):
+        try:
+            import httpx
+
+            bot.send_message(chat_id, "🔗 Fetching article...")
+            resp = httpx.get(user_input, follow_redirects=True, timeout=15)
+            resp.raise_for_status()
+            # Extract title from HTML
+            html = resp.text[:10000]
+            import re
+
+            title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+            title = title_match.group(1).strip() if title_match else ""
+            # Extract meta description
+            desc_match = re.search(
+                r'<meta[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']',
+                html,
+                re.IGNORECASE,
+            )
+            desc = desc_match.group(1).strip() if desc_match else ""
+            if title or desc:
+                extra_context = f"ARTICLE TITLE: {title}\nARTICLE DESCRIPTION: {desc}\nURL: {user_input}"
+        except Exception as e:
+            logger.warning("Failed to fetch URL %s: %s", user_input, e)
+            # Continue anyway — Claude can still work with just the URL
+
+    bot.send_message(chat_id, "✍️ Generating drafts...")
+
+    try:
+        pair = claude.generate_from_topic(user_input, extra_context=extra_context)
+
+        # Save drafts to DynamoDB
+        db.save_draft(pair.twitter)
+        db.save_draft(pair.linkedin)
+
+        # Send article card with buttons
+        from src.telegram.message_formatter import _escape_html
+
+        title = _escape_html(user_input[:200])
+        text = f"📝 <b>Drafts for:</b> {title}"
+        keyboard = article_keyboard(pair.twitter.draft_id)
+        bot.send_message(chat_id, text, reply_markup=keyboard)
+
+    except Exception as e:
+        logger.exception("Failed to generate drafts from topic")
+        bot.send_message(chat_id, format_error_message(f"Failed to generate drafts: {e}"))
+
+
 def handle_command(
     bot: TelegramBot,
     db: DynamoDBStorage,
+    claude: ClaudeClient,
     settings: Settings,
     chat_id: int,
     command: str,
+    command_args: str = "",
 ) -> None:
-    """Handle Telegram bot commands (/start, /help, /scan)."""
+    """Handle Telegram bot commands (/start, /help, /scan, /draft)."""
     if command in ("/start", "/help"):
         help_text = (
             "🤖 <b>Claude News Bot</b>\n\n"
@@ -225,6 +295,7 @@ def handle_command(
             "for Twitter/X and LinkedIn.\n\n"
             "<b>Commands:</b>\n"
             "/scan — Trigger a news scan now\n"
+            "/draft — Generate posts from a topic or URL\n"
             "/help — Show this help message\n\n"
             "<b>How it works:</b>\n"
             "1. I fetch news from crypto, tech, and macro feeds\n"
@@ -234,6 +305,9 @@ def handle_command(
             "A daily digest is sent automatically at 08:00 UTC."
         )
         bot.send_message(chat_id, help_text)
+
+    elif command == "/draft":
+        handle_draft_command(bot, db, claude, chat_id, command_args)
 
     elif command == "/scan":
         bot.send_message(chat_id, "🔍 Starting news scan... (running in background)")
@@ -342,7 +416,10 @@ def lambda_handler(event: dict, context: Any) -> dict:
 
             # Check if it's a command
             if text.startswith("/"):
-                handle_command(bot, db, settings, chat_id, text.split()[0].lower())
+                parts = text.split(None, 1)
+                cmd = parts[0].lower()
+                cmd_args = parts[1] if len(parts) > 1 else ""
+                handle_command(bot, db, claude, settings, chat_id, cmd, cmd_args)
             else:
                 handle_text_message(bot, db, claude, chat_id, text)
 

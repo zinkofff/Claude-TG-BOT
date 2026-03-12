@@ -11,6 +11,7 @@ import anthropic
 
 from src.config.settings import Settings
 from src.core.prompt_templates import (
+    DRAFT_FROM_TOPIC_USER_PROMPT,
     GENERATE_DRAFTS_USER_PROMPT,
     REGENERATE_DRAFT_USER_PROMPT,
     SYSTEM_PROMPT,
@@ -145,6 +146,82 @@ class ClaudeClient:
                 continue
 
         raise ValueError(f"Failed to generate drafts after 2 attempts: {last_error}")
+
+    def generate_from_topic(
+        self,
+        user_input: str,
+        extra_context: str = "",
+    ) -> DraftPair:
+        """Generate Twitter and LinkedIn drafts from a user-provided topic or headline.
+
+        Args:
+            user_input: A headline, topic, or URL provided by the user.
+            extra_context: Optional extra context (e.g. fetched article text).
+
+        Returns:
+            DraftPair with Twitter and LinkedIn drafts.
+        """
+        user_prompt = DRAFT_FROM_TOPIC_USER_PROMPT.format(
+            user_input=user_input,
+            extra_context=extra_context,
+        )
+
+        logger.info("Generating drafts from topic: %s", user_input[:80])
+
+        last_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                response_text = self._call_claude(user_prompt, temperature=0.7)
+                parsed = self._parse_json_response(response_text)
+
+                twitter_text = parsed.get("twitter", "")
+                linkedin_text = parsed.get("linkedin", "")
+
+                if not twitter_text or not linkedin_text:
+                    raise ValueError("Missing 'twitter' or 'linkedin' key in response")
+
+                if len(twitter_text) > 280:
+                    logger.warning(
+                        "Twitter draft exceeds 280 chars (%d), will retry",
+                        len(twitter_text),
+                    )
+                    if attempt == 0:
+                        continue
+
+                now = datetime.now(timezone.utc).isoformat()
+                draft_id = uuid.uuid4().hex[:8]
+
+                return DraftPair(
+                    twitter=Draft(
+                        draft_id=draft_id,
+                        article_hash="topic_" + draft_id,
+                        article_url="",
+                        article_title=user_input[:200],
+                        article_summary="",
+                        platform="twitter",
+                        draft_text=twitter_text,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                    linkedin=Draft(
+                        draft_id=draft_id,
+                        article_hash="topic_" + draft_id,
+                        article_url="",
+                        article_title=user_input[:200],
+                        article_summary="",
+                        platform="linkedin",
+                        draft_text=linkedin_text,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                )
+
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, e)
+                continue
+
+        raise ValueError(f"Failed to generate topic drafts after 2 attempts: {last_error}")
 
     def regenerate_draft(
         self,

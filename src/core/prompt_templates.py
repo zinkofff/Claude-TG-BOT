@@ -119,6 +119,15 @@ URL: {url}
 
 Remember: Return valid JSON with "twitter" and "linkedin" keys only."""
 
+DRAFT_FROM_TOPIC_USER_PROMPT = """Generate a Twitter/X post and a LinkedIn post \
+based on the following topic or headline provided by the user.
+
+USER INPUT: {user_input}
+
+{extra_context}
+
+Remember: Return valid JSON with "twitter" and "linkedin" keys only."""
+
 REGENERATE_DRAFT_USER_PROMPT = """The user reviewed the {platform} post draft below \
 and wants changes. Regenerate ONLY the {platform} version incorporating their feedback.
 
