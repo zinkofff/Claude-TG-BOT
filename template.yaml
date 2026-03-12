@@ -19,16 +19,13 @@ Parameters:
     Default: prod
     AllowedValues: [prod, dev]
   AnthropicApiKey:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /claude-tg-bot/anthropic-api-key
+    Type: String
     NoEcho: true
   TelegramBotToken:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /claude-tg-bot/telegram-bot-token
+    Type: String
     NoEcho: true
   TelegramChatId:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /claude-tg-bot/telegram-chat-id
+    Type: String
   ClaudeModel:
     Type: String
     Default: claude-sonnet-4-6
@@ -59,8 +56,8 @@ Resources:
           TELEGRAM_CHAT_ID: !Ref TelegramChatId
           CLAUDE_MODEL: !Ref ClaudeModel
           DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
-          ARTICLES_TABLE: !Ref ArticlesTable
-          DRAFTS_TABLE: !Ref DraftsTable
+          ARTICLES_TABLE: claude-tg-bot-articles
+          DRAFTS_TABLE: claude-tg-bot-drafts
           LOG_LEVEL: INFO
       Events:
         DailySchedule:
@@ -71,9 +68,9 @@ Resources:
             Enabled: true
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref ArticlesTable
+            TableName: claude-tg-bot-articles
         - DynamoDBCrudPolicy:
-            TableName: !Ref DraftsTable
+            TableName: claude-tg-bot-drafts
 
   TelegramWebhookFunction:
     Type: AWS::Serverless::Function
@@ -89,8 +86,8 @@ Resources:
           TELEGRAM_CHAT_ID: !Ref TelegramChatId
           CLAUDE_MODEL: !Ref ClaudeModel
           DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
-          ARTICLES_TABLE: !Ref ArticlesTable
-          DRAFTS_TABLE: !Ref DraftsTable
+          ARTICLES_TABLE: claude-tg-bot-articles
+          DRAFTS_TABLE: claude-tg-bot-drafts
           LOG_LEVEL: INFO
       Events:
         WebhookApi:
@@ -100,65 +97,9 @@ Resources:
             Method: POST
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref DraftsTable
+            TableName: claude-tg-bot-drafts
         - DynamoDBReadPolicy:
-            TableName: !Ref ArticlesTable
-
-  # ──────────────────────────────────────────────────────────────────
-  # DynamoDB Tables
-  # ──────────────────────────────────────────────────────────────────
-
-  ArticlesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: claude-tg-bot-articles
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: article_hash
-          AttributeType: S
-      KeySchema:
-        - AttributeName: article_hash
-          KeyType: HASH
-      TimeToLiveSpecification:
-        AttributeName: expires_at
-        Enabled: true
-
-  DraftsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: claude-tg-bot-drafts
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: draft_id
-          AttributeType: S
-        - AttributeName: platform
-          AttributeType: S
-        - AttributeName: chat_id
-          AttributeType: N
-        - AttributeName: state
-          AttributeType: S
-      KeySchema:
-        - AttributeName: draft_id
-          KeyType: HASH
-        - AttributeName: platform
-          KeyType: RANGE
-      GlobalSecondaryIndexes:
-        - IndexName: chat-editing-index
-          KeySchema:
-            - AttributeName: chat_id
-              KeyType: HASH
-            - AttributeName: state
-              KeyType: RANGE
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - draft_id
-              - platform
-              - article_url
-              - article_title
-              - article_summary
-              - draft_text
-              - feedback_history
+            TableName: claude-tg-bot-articles
 
 Outputs:
   WebhookUrl:
