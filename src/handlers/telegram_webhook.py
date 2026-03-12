@@ -236,14 +236,29 @@ def handle_command(
         bot.send_message(chat_id, help_text)
 
     elif command == "/scan":
-        bot.send_message(chat_id, "🔍 Starting news scan...")
-        from src.handlers.news_scanner import run_scan
-
+        bot.send_message(chat_id, "🔍 Starting news scan... (running in background)")
         try:
-            result = run_scan(settings)
-            logger.info("Manual scan result: %s", result)
+            import boto3
+            import os
+
+            lambda_client = boto3.client("lambda")
+            scanner_fn = os.environ.get(
+                "SCANNER_FUNCTION_NAME", "claude-tg-bot-scanner-prod"
+            )
+            lambda_client.invoke(
+                FunctionName=scanner_fn,
+                InvocationType="Event",  # async — don't wait
+                Payload=json.dumps(
+                    {
+                        "source": "telegram.scan_command",
+                        "detail-type": "Scheduled Event",
+                        "detail": {},
+                    }
+                ),
+            )
+            logger.info("Invoked scanner Lambda asynchronously")
         except Exception as e:
-            logger.exception("Manual scan failed")
+            logger.exception("Failed to invoke scanner")
             bot.send_message(chat_id, format_error_message(str(e)))
 
 

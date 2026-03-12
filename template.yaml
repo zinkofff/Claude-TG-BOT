@@ -88,6 +88,7 @@ Resources:
           DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
           ARTICLES_TABLE: claude-tg-bot-articles
           DRAFTS_TABLE: claude-tg-bot-drafts
+          SCANNER_FUNCTION_NAME: !Sub claude-tg-bot-scanner-${Stage}
           LOG_LEVEL: INFO
       Events:
         WebhookApi:
@@ -100,6 +101,8 @@ Resources:
             TableName: claude-tg-bot-drafts
         - DynamoDBReadPolicy:
             TableName: claude-tg-bot-articles
+        - LambdaInvokePolicy:
+            FunctionName: !Sub claude-tg-bot-scanner-${Stage}
 
 Outputs:
   WebhookUrl:
