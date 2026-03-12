@@ -262,8 +262,8 @@ def handle_draft_command(
         pair = claude.generate_from_topic(user_input, extra_context=extra_context)
 
         # Save drafts to DynamoDB
-        db.save_draft(pair.twitter)
-        db.save_draft(pair.linkedin)
+        db.put_draft(pair.twitter)
+        db.put_draft(pair.linkedin)
 
         # Send article card with buttons
         from src.telegram.message_formatter import _escape_html
