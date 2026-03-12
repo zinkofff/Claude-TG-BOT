@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Claude Telegram Bot — News scanner and social media post suggester.
+  Scans RSS feeds daily, generates Twitter/LinkedIn drafts via Claude AI,
+  and delivers them to Telegram with interactive controls.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 120
+    MemorySize: 256
+    Architectures:
+      - arm64
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, dev]
+  AnthropicApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /claude-tg-bot/anthropic-api-key
+    NoEcho: true
+  TelegramBotToken:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /claude-tg-bot/telegram-bot-token
+    NoEcho: true
+  TelegramChatId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /claude-tg-bot/telegram-chat-id
+  ClaudeModel:
+    Type: String
+    Default: claude-haiku-4-5
+  DigestArticleCount:
+    Type: String
+    Default: "5"
+  ScanSchedule:
+    Type: String
+    Default: "cron(0 8 * * ? *)"
+    Description: EventBridge cron for the daily scan (default 08:00 UTC)
+
+Resources:
+  # ──────────────────────────────────────────────────────────────────
+  # Lambda Functions
+  # ──────────────────────────────────────────────────────────────────
+
+  NewsScannerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub claude-tg-bot-scanner-${Stage}
+      Handler: src/handlers/news_scanner.lambda_handler
+      Timeout: 300  # 5 min — RSS fetching + Claude API calls
+      MemorySize: 512
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+          TELEGRAM_CHAT_ID: !Ref TelegramChatId
+          CLAUDE_MODEL: !Ref ClaudeModel
+          DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
+          ARTICLES_TABLE: !Ref ArticlesTable
+          DRAFTS_TABLE: !Ref DraftsTable
+          LOG_LEVEL: INFO
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScanSchedule
+            Description: Daily news scan trigger
+            Enabled: true
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DraftsTable
+
+  TelegramWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub claude-tg-bot-webhook-${Stage}
+      Handler: src/handlers/telegram_webhook.lambda_handler
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+          TELEGRAM_CHAT_ID: !Ref TelegramChatId
+          CLAUDE_MODEL: !Ref ClaudeModel
+          DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
+          ARTICLES_TABLE: !Ref ArticlesTable
+          DRAFTS_TABLE: !Ref DraftsTable
+          LOG_LEVEL: INFO
+      Events:
+        WebhookApi:
+          Type: HttpApi
+          Properties:
+            Path: /webhook
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DraftsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+
+  # ──────────────────────────────────────────────────────────────────
+  # DynamoDB Tables
+  # ──────────────────────────────────────────────────────────────────
+
+  ArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub claude-tg-bot-articles-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: article_hash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: article_hash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  DraftsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub claude-tg-bot-drafts-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: draft_id
+          AttributeType: S
+        - AttributeName: platform
+          AttributeType: S
+        - AttributeName: chat_id
+          AttributeType: N
+        - AttributeName: state
+          AttributeType: S
+      KeySchema:
+        - AttributeName: draft_id
+          KeyType: HASH
+        - AttributeName: platform
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: chat-editing-index
+          KeySchema:
+            - AttributeName: chat_id
+              KeyType: HASH
+            - AttributeName: state
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - draft_id
+              - platform
+              - article_url
+              - article_title
+              - article_summary
+              - draft_text
+              - feedback_history
+
+Outputs:
+  WebhookUrl:
+    Description: URL to register as the Telegram bot webhook
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/webhook"
+  NewsScannerFunctionArn:
+    Description: ARN of the news scanner Lambda
+    Value: !GetAtt NewsScannerFunction.Arn
+  TelegramWebhookFunctionArn:
+    Description: ARN of the webhook Lambda
+    Value: !GetAtt TelegramWebhookFunction.Arn

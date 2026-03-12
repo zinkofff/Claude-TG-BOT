@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test Crypto News</title>
+    <link>https://example.com</link>
+    <description>Test feed for unit testing</description>
+    <item>
+      <title>Bitcoin Hits New All-Time High Above $100K</title>
+      <link>https://example.com/articles/btc-100k</link>
+      <description>Bitcoin has surged past $100,000 for the first time, driven by institutional demand and spot ETF inflows.</description>
+      <pubDate>Wed, 12 Mar 2026 08:00:00 GMT</pubDate>
+      <category>Bitcoin</category>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>Ethereum Foundation Announces Major Protocol Upgrade</title>
+      <link>https://example.com/articles/eth-upgrade</link>
+      <description>The Ethereum Foundation has announced a significant protocol upgrade that will improve scalability and reduce gas fees by up to 90%.</description>
+      <pubDate>Wed, 12 Mar 2026 06:00:00 GMT</pubDate>
+      <category>Ethereum</category>
+      <category>Technology</category>
+    </item>
+    <item>
+      <title>BlackRock Expands Tokenisation Platform</title>
+      <link>https://example.com/articles/blackrock-tokenisation</link>
+      <description>BlackRock is expanding its tokenisation platform to include real-world assets, bringing digital asset security to traditional finance.</description>
+      <pubDate>Tue, 11 Mar 2026 14:00:00 GMT</pubDate>
+      <category>Tokenisation</category>
+      <category>Digital Assets</category>
+    </item>
+    <item>
+      <title>Federal Reserve Signals Rate Cut</title>
+      <link>https://example.com/articles/fed-rate-cut</link>
+      <description>The Federal Reserve has signaled a potential rate cut at its next meeting, citing slowing inflation and labor market cooling.</description>
+      <pubDate>Mon, 10 Mar 2026 18:00:00 GMT</pubDate>
+      <category>Macro</category>
+      <category>Federal Reserve</category>
+    </item>
+  </channel>
+</rss>

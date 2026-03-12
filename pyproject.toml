@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-tg-bot"
+version = "0.1.0"
+description = "Telegram bot that scans news and suggests social media posts using Claude AI"
+requires-python = ">=3.9"
+dependencies = [
+    "anthropic>=0.42.0",
+    "feedparser>=6.0.11",
+    "httpx>=0.27.0",
+    "boto3>=1.35.0",
+    "pydantic>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "moto[dynamodb]>=5.0.0",
+    "responses>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "boto3-stubs[dynamodb]",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
