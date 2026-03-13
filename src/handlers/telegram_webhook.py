@@ -98,8 +98,8 @@ def handle_edit(
         bot.edit_message_text(chat_id, message_id, "⚠️ Draft not found.")
         return
 
-    # Set state to editing
-    db.update_draft_state(draft_id, platform, "editing")
+    # Set state to editing and store the chat_id so find_editing_draft works
+    db.update_draft_state(draft_id, platform, "editing", chat_id=chat_id)
 
     # Send the edit prompt as a new message (so the user can reply)
     bot.send_message(chat_id, format_edit_prompt(draft))
