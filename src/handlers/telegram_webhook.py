@@ -261,6 +261,10 @@ def handle_draft_command(
     try:
         pair = claude.generate_from_topic(user_input, extra_context=extra_context)
 
+        # Set chat_id so edit flow can find drafts later
+        pair.twitter.chat_id = chat_id
+        pair.linkedin.chat_id = chat_id
+
         # Save drafts to DynamoDB
         db.put_draft(pair.twitter)
         db.put_draft(pair.linkedin)

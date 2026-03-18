@@ -237,8 +237,22 @@ class DynamoDBStorage:
                 FilterExpression=(
                     Attr("chat_id").eq(chat_id) & Attr("state").eq("editing")
                 ),
-                Limit=1,
             )
+            items = response.get("Items", [])
+            if items:
+                return self._item_to_draft(items[0])
+            # Paginate through all items if needed
+            while "LastEvaluatedKey" in response:
+                response = self.drafts_table.scan(
+                    FilterExpression=(
+                        Attr("chat_id").eq(chat_id) & Attr("state").eq("editing")
+                    ),
+                    ExclusiveStartKey=response["LastEvaluatedKey"],
+                )
+                items = response.get("Items", [])
+                if items:
+                    return self._item_to_draft(items[0])
+            return None
 
         items = response.get("Items", [])
         if not items:

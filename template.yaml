@@ -63,7 +63,7 @@ Resources:
         DailySchedule:
           Type: Schedule
           Properties:
-            Schedule: "cron(0 8 * * ? *)"
+            Schedule: !Ref ScanSchedule
             Description: Daily news scan trigger
             Enabled: true
       Policies:
