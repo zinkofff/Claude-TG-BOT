@@ -37,7 +37,7 @@ def _setup_logging(settings: Settings) -> None:
     )
 
 
-def run_scan(settings: Settings) -> dict[str, Any]:
+def run_scan(settings: Settings, chat_id: str | None = None) -> dict[str, Any]:
     """Execute the full news scan pipeline.
 
     This is the core logic, separated from the Lambda handler
@@ -45,6 +45,7 @@ def run_scan(settings: Settings) -> dict[str, Any]:
 
     Args:
         settings: Application settings.
+        chat_id: Override chat to send results to. Defaults to settings.telegram_chat_id.
 
     Returns:
         Dict with scan results summary.
@@ -52,7 +53,7 @@ def run_scan(settings: Settings) -> dict[str, Any]:
     db = DynamoDBStorage(settings)
     bot = TelegramBot(settings.telegram_bot_token)
     claude = ClaudeClient(settings)
-    chat_id = settings.telegram_chat_id
+    chat_id = chat_id or settings.telegram_chat_id
 
     # Step 1: Fetch all RSS feeds
     logger.info("Step 1: Fetching RSS feeds...")
@@ -156,8 +157,13 @@ def lambda_handler(event: dict, context: Any) -> dict:
 
     logger.info("News scanner triggered: %s", event.get("detail-type", "manual"))
 
+    # Use chat_id from the invoking command if provided
+    override_chat_id = event.get("chat_id")
+    if override_chat_id:
+        override_chat_id = str(override_chat_id)
+
     try:
-        result = run_scan(settings)
+        result = run_scan(settings, chat_id=override_chat_id)
         return {
             "statusCode": 200,
             "body": result,

@@ -331,6 +331,7 @@ def handle_command(
                         "source": "telegram.scan_command",
                         "detail-type": "Scheduled Event",
                         "detail": {},
+                        "chat_id": chat_id,
                     }
                 ),
             )
