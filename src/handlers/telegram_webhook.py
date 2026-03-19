@@ -388,6 +388,11 @@ def lambda_handler(event: dict, context: Any) -> dict:
             # Acknowledge the callback immediately
             bot.answer_callback_query(callback_id)
 
+            # Authorization check
+            if settings.allowed_chat_ids and chat_id not in settings.allowed_chat_ids:
+                logger.warning("Unauthorized callback from chat %s", chat_id)
+                return {"statusCode": 200, "body": "ok"}
+
             # Parse callback data: action:draft_id:platform
             parts = data.split(":")
             action = parts[0] if len(parts) >= 1 else ""
@@ -417,6 +422,11 @@ def lambda_handler(event: dict, context: Any) -> dict:
                 return {"statusCode": 200, "body": "ok"}
 
             logger.info("Text message from chat %s: %s", chat_id, text[:100])
+
+            # Authorization check
+            if settings.allowed_chat_ids and chat_id not in settings.allowed_chat_ids:
+                logger.warning("Unauthorized message from chat %s", chat_id)
+                return {"statusCode": 200, "body": "ok"}
 
             # Check if it's a command
             if text.startswith("/"):

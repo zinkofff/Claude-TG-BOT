@@ -16,7 +16,8 @@ class Settings:
 
     # Telegram
     telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
+    telegram_chat_id: str = ""  # Primary chat for scanner broadcasts
+    allowed_chat_ids: frozenset[int] = frozenset()  # All chats that can use the bot
 
     # Digest
     digest_article_count: int = 5
@@ -33,6 +34,21 @@ class Settings:
     log_level: str = "INFO"
 
 
+def _parse_chat_ids(raw: str) -> frozenset[int]:
+    """Parse comma-separated chat IDs into a frozenset of ints."""
+    if not raw.strip():
+        return frozenset()
+    ids = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if part:
+            try:
+                ids.add(int(part))
+            except ValueError:
+                pass
+    return frozenset(ids)
+
+
 def load_settings() -> Settings:
     """Load settings from environment variables.
 
@@ -44,6 +60,7 @@ def load_settings() -> Settings:
         claude_model=os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5"),
         telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
+        allowed_chat_ids=_parse_chat_ids(os.environ.get("ALLOWED_CHAT_IDS", "")),
         digest_article_count=int(os.environ.get("DIGEST_ARTICLE_COUNT", "5")),
         articles_table=os.environ.get("ARTICLES_TABLE", "claude-tg-bot-articles"),
         drafts_table=os.environ.get("DRAFTS_TABLE", "claude-tg-bot-drafts"),

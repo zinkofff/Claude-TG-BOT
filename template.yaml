@@ -36,6 +36,10 @@ Parameters:
     Type: String
     Default: "cron(0 8 * * ? *)"
     Description: EventBridge cron for the daily scan (default 08:00 UTC)
+  AllowedChatIds:
+    Type: String
+    Default: ""
+    Description: Comma-separated list of Telegram chat IDs allowed to use the bot
 
 Resources:
   # ──────────────────────────────────────────────────────────────────
@@ -58,6 +62,7 @@ Resources:
           DIGEST_ARTICLE_COUNT: !Ref DigestArticleCount
           ARTICLES_TABLE: claude-tg-bot-articles
           DRAFTS_TABLE: claude-tg-bot-drafts
+          ALLOWED_CHAT_IDS: !Ref AllowedChatIds
           LOG_LEVEL: INFO
       Policies:
         - DynamoDBCrudPolicy:
@@ -82,6 +87,7 @@ Resources:
           ARTICLES_TABLE: claude-tg-bot-articles
           DRAFTS_TABLE: claude-tg-bot-drafts
           SCANNER_FUNCTION_NAME: !Sub claude-tg-bot-scanner-${Stage}
+          ALLOWED_CHAT_IDS: !Ref AllowedChatIds
           LOG_LEVEL: INFO
       Events:
         WebhookApi:
